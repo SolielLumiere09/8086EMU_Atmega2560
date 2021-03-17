@@ -1,8 +1,7 @@
 #pragma once
 #include <Arduino.h>
 
-#define and &&
-#define or ||
+
 #define AX_REG 0
 #define CX_REG 1
 #define DX_REG 2
@@ -33,6 +32,8 @@
 #define rm_field 0
 #define mod_field 6
 #define reg_field 3
+#define OFFSET 0x2200
+#define ADD_TO_ADDR(address) (((uint16_t)address)+OFFSET)
 
 #define MOV_0(opcode) ((opcode >> 2) & 0b00100010) //Register/Memory to/from Register
 #define MOV_0_ID 0 
@@ -75,6 +76,12 @@ class CPU{
         uint8_t fetch();
         uint8_t decode(uint8_t opcode);
         void execute_MOV_0(MOV_0_FIELDS *fields);
+        uint16_t get_effective_address(uint8_t rm, uint16_t dip); 
+        void write_to_ram(uint16_t* address, uint16_t data);
+        void write_to_ram(uint8_t* address, uint8_t data);
+        uint16_t read_from_ram(uint16_t* address);
+        uint8_t read_from_ram(uint8_t* address);
+        void clear_registers();
         void update();
         ~CPU();
 };

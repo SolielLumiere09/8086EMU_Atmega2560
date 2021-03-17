@@ -9,9 +9,6 @@ void setup() {
 
   cpu = new CPU();
 
-
-
-
 }
 
 void loop() {
