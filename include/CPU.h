@@ -34,9 +34,17 @@
 #define reg_field 3
 #define OFFSET 0x2200
 #define ADD_TO_ADDR(address) (((uint16_t)address)+OFFSET)
+#define LH_reg_r (fields->reg >> 2)
+#define LH_rm_r (fields->rm >> 2)
+#define LH_reg_v (fields.reg >> 2)
+#define LH_rm_v (fields.rm >> 2)
 
-#define MOV_0(opcode) ((opcode >> 2) & 0b00100010) //Register/Memory to/from Register
+
+#define MOV_0(opcode) ((opcode >> 2) == 0b00100010) //Register/Memory to/from Register
 #define MOV_0_ID 0 
+
+#define MOV_1(opcode, reg) ((opcode >> 1) == 0b01100011) && ((((~reg) >> 3) & 7))//Inmediate to Register/Memory
+#define MOV_1_ID 1
 
 typedef union 
 {
@@ -52,7 +60,8 @@ typedef struct{
     unsigned reg : 3; //reg field
     unsigned rm : 3; // r/m field
 
-}MOV_0_FIELDS;
+}DATA_TRANSFER_FIELD;
+
 
 typedef struct {
     unsigned CF : 1;
@@ -75,14 +84,20 @@ class CPU{
         CPU();
         uint8_t fetch();
         uint8_t decode(uint8_t opcode);
-        void execute_MOV_0(MOV_0_FIELDS *fields);
-        uint16_t get_effective_address(uint8_t rm, uint16_t dip); 
+        
+        uint16_t get_effective_address(uint8_t rm, uint16_t disp); 
         void write_to_ram(uint16_t* address, uint16_t data);
         void write_to_ram(uint8_t* address, uint8_t data);
         uint16_t read_from_ram(uint16_t* address);
         uint8_t read_from_ram(uint8_t* address);
+        void write_or_read_ram(uint16_t disp, DATA_TRANSFER_FIELD *fields);
         void clear_registers();
         void update();
+        void print_reg_status();
+
+        void execute_MOV_0(uint8_t opcode);
+        void execute_MOV_1(uint8_t opcode);
+        
         ~CPU();
 };
 
