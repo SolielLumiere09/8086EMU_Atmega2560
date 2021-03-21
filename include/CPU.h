@@ -32,12 +32,8 @@
 #define rm_field 0
 #define mod_field 6
 #define reg_field 3
-#define OFFSET 0x2200
+#define OFFSET 0
 #define ADD_TO_ADDR(address) (((uint16_t)address)+OFFSET)
-#define LH_reg_r (fields->reg >> 2)
-#define LH_rm_r (fields->rm >> 2)
-#define LH_reg_v (fields.reg >> 2)
-#define LH_rm_v (fields.rm >> 2)
 
 
 #define MOV_0(opcode) ((opcode >> 2) == 0b00100010) //Register/Memory to/from Register
@@ -71,16 +67,23 @@ typedef struct {
     
 }STATUS_REG;
 
+class MOV_0_OPCODE;
+class MOV_1_OPCODE;
+
 
 class CPU{
-
     private:
+        MOV_0_OPCODE *mov_0;
+        MOV_1_OPCODE *mov_1;
+
+
+    public:
         uint16_t PC = 0;
         STATUS_REG sreg = {0};
         REG registers[TOTAL_REGS];
         uint16_t segment_registers[TOTAL_REGS];
         
-    public:
+
         CPU();
         uint8_t fetch();
         uint8_t decode(uint8_t opcode);
@@ -94,10 +97,7 @@ class CPU{
         void clear_registers();
         void update();
         void print_reg_status();
-
-        void execute_MOV_0(uint8_t opcode);
-        void execute_MOV_1(uint8_t opcode);
-        
+        bool LH_reg_selector(uint8_t data);
         ~CPU();
 };
 
