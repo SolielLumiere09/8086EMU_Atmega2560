@@ -2,8 +2,10 @@
 #include <MOV/MOV_0_OPCODE.h>
 #include <MOV/MOV_1_OPCODE.h>
 #include <MOV/MOV_2_OPCODE.h>
+#include <MOV/MOV_3_OPCODE.h>
+#include <MOV/MOV_4_OPCODE.h>
 
-static const uint8_t PROGRAM_MEM[SIZE_RAM] PROGMEM = {0xb8,0x45,0x23,0xbb,0x32,0x12,0xb5,0x12,0xb1,0x67};
+static const uint8_t PROGRAM_MEM[SIZE_RAM] PROGMEM = {0xb8,0x56,0x34,0xa3,0x34,0x22,0x8b,0x16,0x34,0x22,0x89,0xd1,0xb8,0x55,0x00,0x88,0x00,0x8a,0x10,0x88,0x6f,0x12,0x88,0xec};
 static const char* REG_MAPS_16[]  = {"AX", "CX", "DX", "BX", "SP", "BP", "SI", "DI"};
 
 
@@ -13,6 +15,8 @@ CPU::CPU(){
     mov_0 = new MOV_0_OPCODE(this);    
     mov_1 = new MOV_1_OPCODE(this);
     mov_2 = new MOV_2_OPCODE(this);
+    mov_3 = new MOV_3_OPCODE(this);
+    mov_4 = new MOV_4_OPCODE(this);
 
 }
 void CPU::clear_registers(){
@@ -26,8 +30,9 @@ void CPU::clear_registers(){
     registers[BX_REG].data = 0X3489;
     registers[CX_REG].data = 0X7751;
     registers[DX_REG].data = 0X1E12;
-    registers[DI_REG].data = 0x0032;
-    registers[SI_REG].data = 0x0002;
+    registers[DI_REG].data = 0x2332;
+    registers[SI_REG].data = 0x1321;
+    registers[BP_REG].data = 0x1212;
     registers[SP_REG].data = SIZE_RAM-1;
     
 
@@ -44,6 +49,12 @@ void CPU::update(){
                         break;
 
         case MOV_2_ID:  mov_2->execute(opcode);
+                        break;
+        
+        case MOV_3_ID:  mov_3->execute(opcode);
+                        break;
+
+        case MOV_4_ID:  mov_4->execute(opcode);
                         break;
     }
 
@@ -113,8 +124,14 @@ uint8_t CPU::decode(uint8_t opcode){
         id = MOV_1_ID;
     else if(MOV_2(opcode))
         id = MOV_2_ID;
+    else if(MOV_3(opcode))
+        id = MOV_3_ID;
+    else if(MOV_4(opcode))
+        id = MOV_4_ID;
 
-    
+    if(MOV_3(opcode)){
+        Serial.println(F("MEMORY TO ACCUMULATOR"));
+    }
     return id;
 }
 uint8_t CPU::fetch(){

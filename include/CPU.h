@@ -31,14 +31,21 @@
 #define ADD_TO_ADDR(address) (((uint16_t)address)+OFFSET)
 
 
-#define MOV_0(opcode) ((opcode >> 2) == 0b00100010) //Register/Memory to/from Register
+#define MOV_0(opcode) ((opcode & 0b11111100) == 0b10001000) //Register/Memory to/from Register
 #define MOV_0_ID 0 
 
-#define MOV_1(opcode, reg) ((opcode >> 1) == 0b01100011) && ((((~reg) >> 3) & 7))//Inmediate to Register/Memory
+#define MOV_1(opcode, reg) ((opcode & 0b11111110) == 0b11000110) && ((((~reg) >> 3) & 7))//Inmediate to Register/Memory
 #define MOV_1_ID 1
 
-#define MOV_2(opcode) ((opcode & 0b10110000) == 0b10110000) //Immediate to Register
+#define MOV_2(opcode) ((opcode & 0b11110000) == 0b10110000) //Immediate to Register
 #define MOV_2_ID 2
+
+#define MOV_3(opcode) ((opcode & 0b11111110) == 0b10100000) ////Memory to Accumulator
+#define MOV_3_ID 3
+
+#define MOV_4(opcode) ((opcode & 0b11111110) == 0b10100010) //Accumulator to Memory
+#define MOV_4_ID 4
+
 
 
 typedef union 
@@ -55,41 +62,45 @@ typedef struct {
     unsigned AF : 1;
     unsigned ZF : 1;
     
-}STATUS_REG;
+}STATUS_REG; //flags of the status register
 
 class MOV_0_OPCODE;
 class MOV_1_OPCODE;
 class MOV_2_OPCODE;
+class MOV_3_OPCODE;
+class MOV_4_OPCODE;
 
 class CPU{
     private:
-        MOV_0_OPCODE *mov_0;
-        MOV_1_OPCODE *mov_1;
-        MOV_2_OPCODE *mov_2;
+        MOV_0_OPCODE *mov_0;//Register/Memory to/from Register
+        MOV_1_OPCODE *mov_1;//Inmediate to Register/Memory
+        MOV_2_OPCODE *mov_2;//Immediate to Register
+        MOV_3_OPCODE *mov_3;//Memory to Accumulator
+        MOV_4_OPCODE *mov_4;//Accumulator to Memory
 
 
     public:
-        uint16_t PC = 0;
-        STATUS_REG sreg = {0};
-        REG registers[TOTAL_REGS];
-        uint16_t segment_registers[TOTAL_REGS];
+        uint16_t PC = 0; // program counter
+        STATUS_REG sreg = {0}; //status register
+        REG registers[TOTAL_REGS];//all reguisters
+        uint16_t segment_registers[TOTAL_REGS];//all segment registers
         
 
         CPU();
-        uint8_t fetch();
-        uint8_t decode(uint8_t opcode);
+        uint8_t fetch();//fetch instruction from memory
+        uint8_t decode(uint8_t opcode);//decode the instruction
         
-        uint16_t get_effective_address(uint8_t rm, uint16_t disp); 
-        void write_to_ram(uint16_t* address, uint16_t data);
-        void write_to_ram(uint8_t* address, uint8_t data);
-        uint16_t read_from_ram(uint16_t* address);
-        uint8_t read_from_ram(uint8_t* address);
-        void clear_registers();
-        void update();
-        void print_reg_status();
-        bool LH_reg_selector(uint8_t data);
-        uint8_t get_bits(int8_t low, int8_t high, uint8_t data);
-        bool get_bit(uint8_t data, uint8_t num_bit);
+        uint16_t get_effective_address(uint8_t rm, uint16_t disp); //return the effective address acording to datasheet
+        void write_to_ram(uint16_t* address, uint16_t data);//write a word into the ram
+        void write_to_ram(uint8_t* address, uint8_t data);//wrrite a byte into the ram
+        uint16_t read_from_ram(uint16_t* address);//read a word from ram
+        uint8_t read_from_ram(uint8_t* address);//read a byte from ram
+        void clear_registers();//clear registers
+        void update();//update the cpu
+        void print_reg_status();//print the status of the registers
+        bool LH_reg_selector(uint8_t data);//select low or high part of a general purpose register
+        uint8_t get_bits(int8_t low, int8_t high, uint8_t data);//get the bits acording to a range
+        bool get_bit(uint8_t data, uint8_t num_bit);//get a bit from a byte
         ~CPU();
 };
 
