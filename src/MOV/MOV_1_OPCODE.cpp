@@ -5,7 +5,12 @@ MOV_1_OPCODE::MOV_1_OPCODE(CPU *cpu){
     this->cpu = cpu;
 }
 void MOV_1_OPCODE::execute(uint8_t opcode){
-    DATA_TRANSFER_FIELD fields;
+    
+    #define w_field 0
+    #define rm_field 0
+    #define mod_field 6
+
+    MOV_1_FIELDS fields;
     uint8_t fields_opcode = cpu->fetch();
 
     fields.w = opcode >> w_field;
@@ -125,6 +130,9 @@ void MOV_1_OPCODE::execute(uint8_t opcode){
 
     }
 
+    #undef w_field 
+    #undef rm_field 
+    #undef mod_field 
 }
 MOV_1_OPCODE::~MOV_1_OPCODE(){
 }

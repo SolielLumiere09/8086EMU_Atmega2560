@@ -27,11 +27,6 @@
 #define SIZE_RAM 100
 
 
-#define d_field 1
-#define w_field 0
-#define rm_field 0
-#define mod_field 6
-#define reg_field 3
 #define OFFSET 0
 #define ADD_TO_ADDR(address) (((uint16_t)address)+OFFSET)
 
@@ -42,21 +37,16 @@
 #define MOV_1(opcode, reg) ((opcode >> 1) == 0b01100011) && ((((~reg) >> 3) & 7))//Inmediate to Register/Memory
 #define MOV_1_ID 1
 
+#define MOV_2(opcode) ((opcode & 0b10110000) == 0b10110000) //Immediate to Register
+#define MOV_2_ID 2
+
+
 typedef union 
 {
     uint16_t data;
     uint8_t data_HL[2];
     
 }REG;
-
-typedef struct{
-    unsigned d : 1; //d for "To reg" or 
-    unsigned w : 1; //word or byte instruction
-    unsigned mod: 2; //mod field
-    unsigned reg : 3; //reg field
-    unsigned rm : 3; // r/m field
-
-}DATA_TRANSFER_FIELD;
 
 
 typedef struct {
@@ -69,12 +59,13 @@ typedef struct {
 
 class MOV_0_OPCODE;
 class MOV_1_OPCODE;
-
+class MOV_2_OPCODE;
 
 class CPU{
     private:
         MOV_0_OPCODE *mov_0;
         MOV_1_OPCODE *mov_1;
+        MOV_2_OPCODE *mov_2;
 
 
     public:
@@ -93,11 +84,12 @@ class CPU{
         void write_to_ram(uint8_t* address, uint8_t data);
         uint16_t read_from_ram(uint16_t* address);
         uint8_t read_from_ram(uint8_t* address);
-        void write_or_read_ram(uint16_t disp, DATA_TRANSFER_FIELD *fields);
         void clear_registers();
         void update();
         void print_reg_status();
         bool LH_reg_selector(uint8_t data);
+        uint8_t get_bits(int8_t low, int8_t high, uint8_t data);
+        bool get_bit(uint8_t data, uint8_t num_bit);
         ~CPU();
 };
 

@@ -1,8 +1,9 @@
 #include <CPU.h>
 #include <MOV/MOV_0_OPCODE.h>
 #include <MOV/MOV_1_OPCODE.h>
+#include <MOV/MOV_2_OPCODE.h>
 
-static const uint8_t PROGRAM_MEM[SIZE_RAM] PROGMEM = {0xc6, 0x40, 0x12, 0x33, 0x8b, 0x58, 0x12};
+static const uint8_t PROGRAM_MEM[SIZE_RAM] PROGMEM = {0xb8,0x45,0x23,0xbb,0x32,0x12,0xb5,0x12,0xb1,0x67};
 static const char* REG_MAPS_16[]  = {"AX", "CX", "DX", "BX", "SP", "BP", "SI", "DI"};
 
 
@@ -11,6 +12,7 @@ CPU::CPU(){
     clear_registers();
     mov_0 = new MOV_0_OPCODE(this);    
     mov_1 = new MOV_1_OPCODE(this);
+    mov_2 = new MOV_2_OPCODE(this);
 
 }
 void CPU::clear_registers(){
@@ -39,38 +41,14 @@ void CPU::update(){
                         break;
         
         case MOV_1_ID : mov_1->execute(opcode);
-                        break;  
+                        break;
+
+        case MOV_2_ID:  mov_2->execute(opcode);
+                        break;
     }
 
 }
 
-void CPU::write_or_read_ram(uint16_t disp, DATA_TRANSFER_FIELD *fields){
-
-     if(fields->d == 0){
-            //write data to reg
-            if(fields->w){
-                //write 16 bits reg
-                write_to_ram((uint16_t*)disp, registers[fields->reg].data);
-            }
-            else{
-                //write 8 bits reg
-                
-                write_to_ram((uint8_t*)disp, registers[fields->reg % 4].data_HL[LH_reg_selector(fields->reg)]);
-            }
-        }
-        else{
-            //read data to reg
-            if(fields->w){
-                //read a word 
-                registers[fields->reg % 4].data = read_from_ram((uint16_t*)disp);
-
-            }
-            else{
-                //read a byte
-                registers[fields->reg % 4].data_HL[LH_reg_selector(fields->reg)] = read_from_ram((uint8_t*)disp);
-            }
-        }
-}
 void CPU::write_to_ram(uint16_t* address, uint16_t data){
     
     address = (uint16_t*)ADD_TO_ADDR(address);
@@ -133,6 +111,8 @@ uint8_t CPU::decode(uint8_t opcode){
         id = MOV_0_ID;
     else if(MOV_1(opcode, pgm_read_byte(PROGRAM_MEM + PC)))
         id = MOV_1_ID;
+    else if(MOV_2(opcode))
+        id = MOV_2_ID;
 
     
     return id;
@@ -145,8 +125,29 @@ void CPU::print_reg_status(){
     Serial.println(REG_MAPS_16[BX_REG] + String(" = ") + String(registers[BX_REG].data, 16));
     Serial.println(REG_MAPS_16[CX_REG] + String(" = ") + String(registers[CX_REG].data, 16));
     Serial.println(REG_MAPS_16[DX_REG] + String(" = ") + String(registers[DX_REG].data, 16));
+    Serial.println(REG_MAPS_16[SI_REG] + String(" = ") + String(registers[SI_REG].data, 16));
+    Serial.println(REG_MAPS_16[DI_REG] + String(" = ") + String(registers[DI_REG].data, 16));
+    Serial.println(REG_MAPS_16[BP_REG] + String(" = ") + String(registers[BP_REG].data, 16));
+    
+    
+    
     Serial.println();
     
+}
+uint8_t CPU::get_bits(int8_t low, int8_t high, uint8_t data){
+    int8_t i;
+    uint8_t bits = 0;
+
+    for(i = high; i >= low; i--){
+        bits <<= 1;
+        bits |= get_bit(data, i);
+    }
+        
+    return bits;
+}
+bool CPU::get_bit(uint8_t data, uint8_t num_bit){
+    
+    return (data >> num_bit) & 1; 
 }
 bool CPU::LH_reg_selector(uint8_t data){
 

@@ -15,7 +15,6 @@ void setup() {
   cpu->print_reg_status();
   pinMode(INT_PIN, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(INT_PIN), &updateCPU, RISING);
-
 }
 
 void loop() {

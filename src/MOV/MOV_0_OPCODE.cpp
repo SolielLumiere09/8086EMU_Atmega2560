@@ -6,7 +6,13 @@ MOV_0_OPCODE::MOV_0_OPCODE(CPU *cpu){
 }
 void MOV_0_OPCODE::execute(uint8_t opcode)
 {
-    DATA_TRANSFER_FIELD fields;
+    #define d_field 1
+    #define w_field 0
+    #define rm_field 0
+    #define mod_field 6
+    #define reg_field 3
+
+    MOV_0_FIELDS fields;
     uint8_t fields_opcode = cpu->fetch();
 
     fields.w = opcode >> w_field;
@@ -49,27 +55,67 @@ void MOV_0_OPCODE::execute(uint8_t opcode)
         uint16_t dispL = cpu->fetch(); //get Low disp
         uint16_t dispH = cpu->fetch(); //get High dip
         uint16_t disp = (cpu->segment_registers[DS_REG]*0x10) + ((dispH << 8) | dispL);
-        cpu->write_or_read_ram(disp, &fields);
+        write_or_read_ram(disp, &fields);
 
     }
     else if(fields.mod == 0b00){
         //if mod=00 then DISP=0*, disp-io and disp-high are absent
         uint16_t disp = cpu->get_effective_address(fields.rm, 0);
-        cpu->write_or_read_ram(disp, &fields);
+        write_or_read_ram(disp, &fields);
     }
     else if(fields.mod == 0b01){
         //if mod=01 then DISP= disp-low sign-extended to 16 bits,disp-highis absent
         int16_t dispL = (int16_t)cpu->fetch(); //get low disp
         uint16_t disp = cpu->get_effective_address(fields.rm, (uint16_t)dispL);
 
-        cpu->write_or_read_ram(disp, &fields);
+        write_or_read_ram(disp, &fields);
     }
     else if (fields.mod == 0b10){
         uint16_t dispL = cpu->fetch(); //get Low disp
         uint16_t dispH = cpu->fetch(); //get High dip
         uint16_t dispT = ((dispH << 8) | dispL);//complete disp
         uint16_t disp = cpu->get_effective_address(fields.rm, dispT);// effective address
-        cpu->write_or_read_ram(disp, &fields);
+        write_or_read_ram(disp, &fields);
+    }
+
+    #undef d_field 
+    #undef w_field 
+    #undef rm_field 
+    #undef mod_field 
+    #undef reg_field 
+    
+}
+void MOV_0_OPCODE::write_or_read_ram(uint16_t disp, MOV_0_FIELDS *fields)
+{
+
+    if(fields->d == 0)
+    {
+            //write data to reg
+            if(fields->w)
+            {
+                //write 16 bits reg
+                cpu->write_to_ram((uint16_t*)disp, cpu->registers[fields->reg].data);
+            }
+            else
+            {
+                //write 8 bits reg
+                cpu->write_to_ram((uint8_t*)disp, cpu->registers[fields->reg % 4].data_HL[cpu->LH_reg_selector(fields->reg)]);
+            }
+    }
+    else
+    {
+        //read data to reg
+        if(fields->w)
+        {
+            //read a word 
+            cpu->registers[fields->reg % 4].data = cpu->read_from_ram((uint16_t*)disp);
+
+        }
+        else
+        {
+            //read a byte
+            cpu->registers[fields->reg % 4].data_HL[cpu->LH_reg_selector(fields->reg)] = cpu->read_from_ram((uint8_t*)disp);
+        }
     }
     
 }
