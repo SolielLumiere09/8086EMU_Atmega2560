@@ -1,8 +1,8 @@
 #include <MOV/MOV_1_OPCODE.h>
 
 
-MOV_1_OPCODE::MOV_1_OPCODE(CPU *cpu){
-    this->cpu = cpu;
+MOV_1_OPCODE::MOV_1_OPCODE(){
+
 }
 void MOV_1_OPCODE::execute(uint8_t opcode){
     
@@ -11,7 +11,7 @@ void MOV_1_OPCODE::execute(uint8_t opcode){
     #define mod_field 6
 
     MOV_1_FIELDS fields;
-    uint8_t fields_opcode = cpu->fetch();
+    uint8_t fields_opcode = CPU::cpu->fetch();
 
     fields.w = opcode >> w_field;
     fields.mod = fields_opcode >> mod_field;
@@ -21,18 +21,14 @@ void MOV_1_OPCODE::execute(uint8_t opcode){
         //inmediate to register 
         if(fields.w){
             //word instruction
-            uint16_t dataL = cpu->fetch();
-            uint16_t dataH = cpu->fetch();
-            uint16_t data = (dataH << 8) | dataL;
-
-            cpu->registers[fields.rm].data = data;
+            uint16_t data = CPU::cpu->get_word(); //get data 
+            CPU::cpu->registers[fields.rm].data = data; //write to register
 
         }
         else{
             //byte instruction
-            uint8_t data = cpu->fetch();
-
-            cpu->registers[fields.rm % 4].data_HL[cpu->LH_reg_selector(fields.rm)] = data;
+            uint8_t data = CPU::cpu->get_byte(); //get byte
+            CPU::cpu->registers[fields.rm % 4].data_HL[CPU::cpu->LH_reg_selector(fields.rm)] = data; //write to register
         }
     }
     else if(fields.mod == 0b00 && fields.rm == 0b110){
@@ -41,23 +37,17 @@ void MOV_1_OPCODE::execute(uint8_t opcode){
 
         if(fields.w){
             //word instruction
-            uint16_t disp = cpu->fetch(); //get disp
-            disp |= ((uint16_t)cpu->fetch() << 8);
-
-            uint16_t data = cpu->fetch(); // get data
-            data |= ((uint16_t)cpu->fetch() << 8);
+            uint16_t disp = CPU::cpu->get_word_disp(); //get the address
+            uint16_t data = CPU::cpu->get_word(); //get word 
            
-            cpu->write_to_ram((uint16_t*)disp, data);
+            CPU::cpu->write_to_ram((uint16_t*)disp, data);
 
         }
         else{
             //byte instruction
-            uint16_t disp = cpu->fetch(); // get disp
-            disp |= ((uint16_t)cpu->fetch() << 8);
-
-            uint8_t data = cpu->fetch(); // get data
-            
-            cpu->write_to_ram((uint8_t*)disp, data);
+            uint16_t disp = CPU::cpu->get_word_disp(); //get the disp
+            uint8_t data = CPU::cpu->get_byte(); // get data
+            CPU::cpu->write_to_ram((uint8_t*)disp, data);
 
         }
 
@@ -69,18 +59,16 @@ void MOV_1_OPCODE::execute(uint8_t opcode){
         case 0b00:  //if mode = 00 then DISP = 0 ,disp-low and disp-high areabsent
                     if(fields.w){
                         //word instruction
-                        uint16_t data = cpu->fetch(); //get data
-                        data |= ((uint16_t)cpu->fetch() << 8);
-                        Serial.println(data, 16);
-                        uint16_t disp =cpu-> get_effective_address(fields.rm, 0x0000);
-                        cpu->write_to_ram((uint16_t*)disp, data); // write data 
+                        uint16_t data = CPU::cpu->get_word(); //get data
+                        uint16_t disp = CPU::cpu-> get_effective_address(fields.rm, 0x0000); //get effective address
+                        CPU::cpu->write_to_ram((uint16_t*)disp, data); // write data 
 
                     }
                     else{
                         //byte instruction
-                        uint8_t data = cpu->fetch();
-                        uint16_t disp = cpu->get_effective_address(fields.rm, 0x0000);
-                        cpu->write_to_ram((uint8_t*)disp, data);
+                        uint8_t data = CPU::cpu->get_byte();
+                        uint16_t disp = CPU::cpu->get_effective_address(fields.rm, 0x0000);
+                        CPU::cpu->write_to_ram((uint8_t*)disp, data);
                     }
                     break;
 
@@ -88,19 +76,16 @@ void MOV_1_OPCODE::execute(uint8_t opcode){
                         //if mode = 1 then DISP = disp-low sign-extended to 16 bits,disp-high is absent
                         if(fields.w){
                             //word instruction
-                            int16_t disp = (int16_t)cpu->fetch();// get disp
-                            
-                            uint16_t data = cpu->fetch(); //get data L
-                            data |= ((uint16_t)cpu->fetch() << 8); //get data H
-
-                            cpu->write_to_ram((uint16_t*)cpu->get_effective_address(fields.rm, (uint16_t)disp), data); //write the value in ram
+                            int16_t disp = CPU::cpu->get_word_signed_disp();// get disp
+                            uint16_t data = CPU::cpu->get_word(); //get data
+                            CPU::cpu->write_to_ram((uint16_t*)CPU::cpu->get_effective_address(fields.rm, (uint16_t)disp), data); //write the value in ram
 
                         }  
                         else{
                             //byte instruction
-                            int16_t disp = (int16_t)cpu->fetch();// get disp
-                            uint8_t data = cpu->fetch();//get data
-                            cpu->write_to_ram((uint8_t*)cpu->get_effective_address(fields.rm, (uint16_t)disp), data);
+                            int16_t disp = CPU::cpu->get_word_signed_disp();// get disp
+                            uint8_t data = CPU::cpu->get_byte();//get data
+                            CPU::cpu->write_to_ram((uint8_t*)CPU::cpu->get_effective_address(fields.rm, (uint16_t)disp), data);
 
                         }
                         break;
@@ -108,24 +93,17 @@ void MOV_1_OPCODE::execute(uint8_t opcode){
             case 0b10:  //if mod = 10 then DISP = disp-high;disp-low
                         if(fields.w){
                             //word instruction
-                            uint16_t disp = (uint16_t)cpu->fetch(); //get dispL
-                            disp |= ((uint16_t)cpu->fetch() << 8); //get dispH
-
-                            uint16_t data = (uint16_t)cpu->fetch(); //get dataL
-                            data |= ((uint16_t)cpu->fetch() << 8); //get dataH
-
-                            cpu->write_to_ram((uint16_t*)cpu->get_effective_address(fields.rm, disp), data);
-
+                            uint16_t disp = CPU::cpu->get_word_disp();//get disp
+                            uint16_t data = CPU::cpu->get_word();//get word 
+                            CPU::cpu->write_to_ram((uint16_t*)CPU::cpu->get_effective_address(fields.rm, disp), data);
                         }
                         else{
                             //byte instruction
-                            uint16_t disp = (uint16_t)cpu->fetch(); //get dispL
-                            disp |= ((uint16_t)cpu->fetch() << 8); //get dispH
-
-                            uint8_t data = cpu->fetch(); //get the data
-
-                            cpu->write_to_ram((uint8_t*)cpu->get_effective_address(fields.rm, disp), data);
+                            uint16_t disp = CPU::cpu->get_word_disp();//get disp
+                            uint8_t data = CPU::cpu->get_byte(); //get the data
+                            CPU::cpu->write_to_ram((uint8_t*)CPU::cpu->get_effective_address(fields.rm, disp), data);
                         }
+                        break;
         }
 
     }

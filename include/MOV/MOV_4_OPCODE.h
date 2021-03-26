@@ -7,11 +7,9 @@
 
 class MOV_4_OPCODE
 {
-private:
-    CPU *cpu;
 
 public:
-    MOV_4_OPCODE(CPU *cpu);
+    MOV_4_OPCODE();
     void execute(uint8_t opcode);
     ~MOV_4_OPCODE();
 };

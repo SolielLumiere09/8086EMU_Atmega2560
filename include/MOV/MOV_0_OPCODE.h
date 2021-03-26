@@ -13,12 +13,8 @@ typedef struct{
 
 class MOV_0_OPCODE ////Register/Memory to/from Register
 {
-    private:
-        CPU *cpu;
-
-
     public:
-        MOV_0_OPCODE(CPU *cpu);
+        MOV_0_OPCODE();
         void execute(uint8_t opcode);
         void write_or_read_ram(uint16_t disp, MOV_0_FIELDS *fields);
         ~MOV_0_OPCODE();

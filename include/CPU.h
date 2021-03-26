@@ -46,7 +46,14 @@
 #define MOV_4(opcode) ((opcode & 0b11111110) == 0b10100010) //Accumulator to Memory
 #define MOV_4_ID 4
 
+#define PUSH_0(opcode, reg) ((opcode == 0b11111111) && ((reg & 0b00111000)) == 0b00110000) //Register/Memory 
+#define PUSH_0_ID 5
 
+#define PUSH_1(opcode) ((opcode & 0b11111000) == 0b01010000)//Push register
+#define PUSH_1_ID 6
+
+#define PUSH_2(opcode) ((opcode & 0b11100111) == 0b00000111)//push segment register
+#define PUSH_2_ID 7
 
 typedef union 
 {
@@ -56,12 +63,19 @@ typedef union
 }REG;
 
 
-typedef struct {
-    unsigned CF : 1;
-    unsigned PF : 1;
-    unsigned AF : 1;
-    unsigned ZF : 1;
-    
+typedef union {
+    uint16_t status_reg_data;
+    unsigned CF : 1;//carry flag
+    unsigned PF : 1;//parity flag
+    unsigned AF : 1;//auxiliary flag
+    unsigned ZF : 1;//zero flag
+    unsigned SF : 1;//sign flag
+    unsigned TF : 1;//
+    unsigned IF : 1;//intrerrupt flag
+    unsigned DF : 1;
+    unsigned OF : 1;//overflow
+
+
 }STATUS_REG; //flags of the status register
 
 class MOV_0_OPCODE;
@@ -69,6 +83,9 @@ class MOV_1_OPCODE;
 class MOV_2_OPCODE;
 class MOV_3_OPCODE;
 class MOV_4_OPCODE;
+class PUSH_0_OPCODE;
+class PUSH_1_OPCODE;
+class PUSH_2_OPCODE;
 
 class CPU{
     private:
@@ -77,13 +94,17 @@ class CPU{
         MOV_2_OPCODE *mov_2;//Immediate to Register
         MOV_3_OPCODE *mov_3;//Memory to Accumulator
         MOV_4_OPCODE *mov_4;//Accumulator to Memory
+        PUSH_0_OPCODE *push_0;//push Register/Memory to stack
+        PUSH_1_OPCODE *push_1;//Push register
+        PUSH_2_OPCODE *push_2;//push segment 
 
 
     public:
+        static CPU *cpu;
         uint16_t PC = 0; // program counter
         STATUS_REG sreg = {0}; //status register
         REG registers[TOTAL_REGS];//all reguisters
-        uint16_t segment_registers[TOTAL_REGS];//all segment registers
+        REG segment_registers[TOTAL_REGS];//all segment registers
         
 
         CPU();
@@ -91,6 +112,11 @@ class CPU{
         uint8_t decode(uint8_t opcode);//decode the instruction
         
         uint16_t get_effective_address(uint8_t rm, uint16_t disp); //return the effective address acording to datasheet
+        uint16_t get_word_disp(); //return the effective address acording to mod = 00 and rm = 110
+        int16_t get_word_signed_disp(); //return the sign extended byte 
+        uint8_t get_byte(); //return a byte from fetch
+        uint16_t get_word();//return a word from fetch
+
         void write_to_ram(uint16_t* address, uint16_t data);//write a word into the ram
         void write_to_ram(uint8_t* address, uint8_t data);//wrrite a byte into the ram
         uint16_t read_from_ram(uint16_t* address);//read a word from ram

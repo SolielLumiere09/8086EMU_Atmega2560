@@ -14,11 +14,9 @@ typedef struct
 
 class MOV_1_OPCODE
 {
-private:
-    CPU *cpu;
 
 public:
-    MOV_1_OPCODE(CPU *cpu);
+    MOV_1_OPCODE();
     void execute(uint8_t opcode);
     ~MOV_1_OPCODE();
 };
