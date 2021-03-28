@@ -1,27 +1,20 @@
 #include <CPU.h>
-#include <MOV/MOV_0_OPCODE.h>
-#include <MOV/MOV_1_OPCODE.h>
-#include <MOV/MOV_2_OPCODE.h>
-#include <MOV/MOV_3_OPCODE.h>
-#include <MOV/MOV_4_OPCODE.h>
-#include <PUSH/PUSH_0_OPCODE.h>
-#include <PUSH/PUSH_1_OPCODE.h>
-#include <PUSH/PUSH_2_OPCODE.h>
+#include <MOV/MOV.h>
+#include <PUSH/PUSH.h>
+#include <POP/POP.h>
 
-static const uint8_t PROGRAM_MEM[SIZE_RAM] PROGMEM = {0xb8,0x56,0x34,0xa3,0x34,0x22,0x8b,0x16,0x34,0x22,0x89,0xd1,0xb8,0x55,0x00,0x88,0x00,0x8a,0x10,0x88,0x6f,0x12,0x88,0xec};
+static const uint8_t PROGRAM_MEM[SIZE_RAM] PROGMEM = {0xb8,0x28,0x43,0x89,0xc3,0x88,0x4f,0x12,0x8a,0x77,0x12,0xb9,0x21,0x43,0xb2,0x99,0x89,0x1e,0x90,0x22,0x8b,0x16,0x90,0x22};
 static const char* REG_MAPS_16[]  = {"AX", "CX", "DX", "BX", "SP", "BP", "SI", "DI"};
 CPU* CPU::cpu;
 
 CPU::CPU(){
     CPU::cpu = this;
     clear_registers();
-    mov_0 = new MOV_0_OPCODE();    
-    mov_1 = new MOV_1_OPCODE();
-    mov_2 = new MOV_2_OPCODE();
-    mov_3 = new MOV_3_OPCODE();
-    mov_4 = new MOV_4_OPCODE();
-    push_0 = new PUSH_0_OPCODE();
-    push_1 = new PUSH_1_OPCODE();
+    this->executed = false;
+
+    this->mov = new MOV();
+    this->push = new PUSH();
+    this->pop = new POP();
 
 }
 void CPU::clear_registers(){
@@ -43,35 +36,72 @@ void CPU::clear_registers(){
 
 }
 void CPU::update(){
+    //fetxh instruction
     uint8_t opcode = fetch();
-    
-    switch (decode(opcode))
-    {
-        case MOV_0_ID : mov_0->execute(opcode);
-                        break;
+
+    mov_execute(opcode);
+    push_execute(opcode);
+    pop_execute(opcode);
+    executed = false;
+}
+void CPU::mov_execute(uint8_t opcode){
+    if(!executed){
+        if(is_mov_inmediate_to_register_or_memory(opcode, peek_next_byte())){
+            mov->execute_inmediate_to_register_or_memory(opcode);
+            executed = true;
+        }
+        else if(is_mov_register_or_memory_to_or_from_register(opcode)){
+            mov->execute_mov_register_or_memory_to_or_from_register(opcode);
+            executed = true;
+        }
+        else if(is_mov_inmediate_to_register(opcode)){
+            mov->execute_inmediate_to_register(opcode);
+            executed = true;
+        }
+        else if(is_mov_memory_to_accumulator(opcode)){
+            mov->execute_memory_to_accumulator(opcode);
+            executed = true;
+        }
+        else if(is_mov_accumulator_to_memory(opcode)){
+            mov->execute_accumulator_to_memory(opcode);
+            executed = true;
+        }
+    }
+}
+void CPU::push_execute(uint8_t opcode){
+    if(!executed){
+        if(is_push_register_or_memory(opcode, peek_next_byte())){
+            executed = true;
+            push->execute_register_or_memory();
+        }
+        else if(is_push_register(opcode)){
+            executed = true;
+            push->execute_register(opcode);
+        }
+        else if(is_push_segment(opcode)){
+            executed = true;
+            push->execute_segment_register(opcode);
+        }
         
-        case MOV_1_ID : mov_1->execute(opcode);
-                        break;
-
-        case MOV_2_ID:  mov_2->execute(opcode);
-                        break;
-        
-        case MOV_3_ID:  mov_3->execute(opcode);
-                        break;
-
-        case MOV_4_ID:  mov_4->execute(opcode);
-                        break;
-
-        case PUSH_0_ID: push_0->execute();
-                        break;
-
-        case PUSH_1_ID: push_1->execute(opcode);
-                        break;
-
-        case PUSH_2_ID: push_2->execute(opcode);
-                        break;
     }
 
+}
+
+void CPU::pop_execute(uint8_t opcode){
+    if(!executed){
+        if(is_pop_register_or_memory(opcode, peek_next_byte())){
+            executed = true;
+            pop->execute_pop_register_or_memory(opcode);
+        }
+        else if(is_pop_register(opcode)){
+            executed = true;
+            pop->execute_pop_register(opcode);
+        }
+        else if(is_pop_segment(opcode)){
+            executed = true;
+            pop->execute_pop_segment_register(opcode);
+        }
+    }
 }
 
 void CPU::write_to_ram(uint16_t* address, uint16_t data){
@@ -94,18 +124,42 @@ uint16_t CPU::read_from_ram(uint16_t* address){
 
     return *address;
 }
+uint16_t CPU::get_word_disp(uint8_t segment){
+    uint16_t EA = (uint16_t)fetch(); //get low disp
+    EA |= (uint16_t)fetch() << 8;// get high disp
+    EA += segment_registers[segment].data; //add the segment 
+    return EA;
+}
 uint16_t CPU::get_word_disp(){
     uint16_t EA = (uint16_t)fetch(); //get low disp
     EA |= (uint16_t)fetch() << 8;// get high disp
-
-    EA += segment_registers[DS_REG].data * 0x10; //get effective address 
 
     return EA;
 }
 int16_t CPU::get_word_signed_disp(){
     int16_t EA = (int16_t)fetch(); //get disp and extend the sign 
-
+    
     return EA;
+}
+void CPU::push_to_stack(uint16_t data){
+    uint16_t disp = ((segment_registers[SS_REG].data << 4) + registers[SP_REG].data); //get total disp of stack
+    uint8_t dataL = (uint8_t)(data & 0x00FF); //low part
+    uint8_t dataH = (uint8_t)(data >> 8);// high part
+
+    write_to_ram((uint8_t*)disp - 1, dataH); //write high part of data
+    write_to_ram((uint8_t*)disp - 2, dataL); //write low part of data
+
+    registers[SP_REG].data -= 2; //substract stack pointer
+
+
+} 
+uint16_t CPU::pop_from_stack(){
+    uint16_t disp = ((segment_registers[SS_REG].data << 4) + registers[SP_REG].data); //get total disp 
+    uint16_t data = read_from_ram((uint16_t*)disp); //get data
+
+    registers[SP_REG].data += 2;
+
+    return data;
 }
 uint8_t CPU::get_byte(){
 
@@ -118,62 +172,42 @@ uint16_t CPU::get_word(){
 
     return data;
 }
+uint8_t CPU::peek_next_byte(){
+    return pgm_read_byte(PROGRAM_MEM + PC);
+}
 uint16_t CPU::get_effective_address(uint8_t rm, uint16_t disp){
 
-    uint16_t EA = segment_registers[DS_REG].data * 0x10;
+    uint16_t EA = 0;
 
     switch(rm){
-        case 0b000: EA += registers[BX_REG].data + registers[SI_REG].data +  disp;   
+        case 0b000: EA = (segment_registers[DS_REG].data << 4) + registers[BX_REG].data + registers[SI_REG].data +  disp;   
                     break;
 
-        case 0b001: EA += registers[BX_REG].data + registers[DI_REG].data + disp;
+        case 0b001: EA = (segment_registers[DS_REG].data << 4) + registers[BX_REG].data + registers[DI_REG].data + disp;
                     break;
 
-        case 0b010: EA += registers[BP_REG].data + registers[SI_REG].data + disp;
+        case 0b010: EA = (segment_registers[SS_REG].data << 4) + registers[BP_REG].data + registers[SI_REG].data + disp;
                     break;
 
-        case 0b011: EA += registers[BP_REG].data + registers[DI_REG].data + disp;
+        case 0b011: EA = (segment_registers[SS_REG].data << 4) + registers[BP_REG].data + registers[DI_REG].data + disp;
                     break;
 
-        case 0b100: EA += registers[SI_REG].data + disp;
+        case 0b100: EA = (segment_registers[DS_REG].data << 4) + registers[SI_REG].data + disp;
                     break;
 
-        case 0b101: EA += registers[DI_REG].data + disp;
+        case 0b101: EA = (segment_registers[DS_REG].data << 4) + registers[DI_REG].data + disp;
                     break;
 
-        case 0b110: EA += registers[BP_REG].data + disp;
+        case 0b110: EA = (segment_registers[SS_REG].data << 4) + registers[BP_REG].data + disp;
                     break;
 
-        case 0b111: EA += registers[BX_REG].data + disp;
+        case 0b111: EA = (segment_registers[DS_REG].data << 4) + registers[BX_REG].data + disp;
                     break;
     }
 
     
     
     return EA;
-}
-uint8_t CPU::decode(uint8_t opcode){
-    
-    uint8_t id = 0xff;
-
-    if(MOV_1(opcode, pgm_read_byte(PROGRAM_MEM + PC)))
-        id = MOV_1_ID;
-    if(PUSH_0(opcode, pgm_read_byte(PROGRAM_MEM + PC)))
-        id = PUSH_0_ID;
-    else if(MOV_0(opcode))
-        id = MOV_0_ID;
-    else if(MOV_2(opcode))
-        id = MOV_2_ID;
-    else if(MOV_3(opcode))
-        id = MOV_3_ID;
-    else if(MOV_4(opcode))
-        id = MOV_4_ID;
-    else if(PUSH_1(opcode))
-        id = PUSH_1_ID;
-    else if(PUSH_2(opcode))
-        id = PUSH_2_ID;
-
-    return id;
 }
 uint8_t CPU::fetch(){
     return pgm_read_byte(PROGRAM_MEM + PC++);
