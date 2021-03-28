@@ -1,4 +1,4 @@
-#include <POP/POP.h>
+#include <POP.h>
 
 POP::POP(/* args */)
 {

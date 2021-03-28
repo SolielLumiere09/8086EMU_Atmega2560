@@ -48,6 +48,9 @@
 #define is_pop_register(opcode) ((opcode & 0b11111000) == 0b01011000)//pop register
 #define is_pop_segment(opcode) ((opcode & 0b11100111) == 0b00000111)//pop segment 
 
+//XCHG
+#define is_xchg_register_or_memory_with_register(opcode) ((opcode & 0b11111110) == 0b10000110) //xchg Register/Memory with Register
+#define is_xchg_register_with_accumulator(opcode) ((opcode & 0b11111000) == 0b10010000) //xchg Register with Accumulator
 
 typedef union 
 {
@@ -75,6 +78,7 @@ typedef union {
 class MOV;
 class PUSH;
 class POP;
+class XCHG;
 
 class CPU{
     private:
@@ -82,6 +86,7 @@ class CPU{
         MOV *mov;
         PUSH *push;
         POP *pop;
+        XCHG *xchg;
 
     public:
         static CPU *cpu;
@@ -96,6 +101,7 @@ class CPU{
         void mov_execute(uint8_t opcode); //for mov instructions
         void push_execute(uint8_t opcode); //for push instruction 
         void pop_execute(uint8_t opcode);//for pops instructions
+        void xchg_execute(uint8_t opcode);//for xchg instructions
 
         uint16_t get_effective_address(uint8_t rm, uint16_t disp); //return the effective address acording to datasheet
         uint16_t get_word_disp(); //return the effective address acording to mod = 00 and rm = 110
@@ -115,6 +121,8 @@ class CPU{
         bool LH_reg_selector(uint8_t data);//select low or high part of a general purpose register
         uint8_t get_bits(int8_t low, int8_t high, uint8_t data);//get the bits acording to a range
         bool get_bit(uint8_t data, uint8_t num_bit);//get a bit from a byte
+        void swap(uint16_t* x, uint16_t* y); //swap two words
+        void swap(uint8_t* x, uint8_t* y);//swap two bytes
         ~CPU();
 };
 

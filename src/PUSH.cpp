@@ -1,4 +1,4 @@
-#include <PUSH/PUSH.h>
+#include <PUSH.h>
 
 PUSH::PUSH(/* args */)
 {
@@ -54,6 +54,7 @@ void PUSH::execute_register_or_memory(){
 void PUSH::execute_register(uint8_t opcode){
     #define REG_L 0
     #define REG_H 2
+
     
     uint8_t reg = CPU::cpu->get_bits(REG_L, REG_H, opcode); //get reg field
     CPU::cpu->push_to_stack(CPU::cpu->registers[reg].data); //push register 

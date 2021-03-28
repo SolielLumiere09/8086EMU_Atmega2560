@@ -1,9 +1,10 @@
 #include <CPU.h>
-#include <MOV/MOV.h>
-#include <PUSH/PUSH.h>
-#include <POP/POP.h>
+#include <MOV.h>
+#include <PUSH.h>
+#include <POP.h>
+#include <XCHG.h>
 
-static const uint8_t PROGRAM_MEM[SIZE_RAM] PROGMEM = {0xb8,0x28,0x43,0x89,0xc3,0x88,0x4f,0x12,0x8a,0x77,0x12,0xb9,0x21,0x43,0xb2,0x99,0x89,0x1e,0x90,0x22,0x8b,0x16,0x90,0x22};
+static const uint8_t PROGRAM_MEM[SIZE_RAM] PROGMEM = {0x93,0x86,0xea,0x87,0x06,0x44,0x44,0x87,0x1e,0x44,0x44};
 static const char* REG_MAPS_16[]  = {"AX", "CX", "DX", "BX", "SP", "BP", "SI", "DI"};
 CPU* CPU::cpu;
 
@@ -15,6 +16,7 @@ CPU::CPU(){
     this->mov = new MOV();
     this->push = new PUSH();
     this->pop = new POP();
+    this->xchg = new XCHG();
 
 }
 void CPU::clear_registers(){
@@ -42,6 +44,7 @@ void CPU::update(){
     mov_execute(opcode);
     push_execute(opcode);
     pop_execute(opcode);
+    xchg_execute(opcode);
     executed = false;
 }
 void CPU::mov_execute(uint8_t opcode){
@@ -103,7 +106,33 @@ void CPU::pop_execute(uint8_t opcode){
         }
     }
 }
+void CPU::xchg_execute(uint8_t opcode){
+    if(!executed){
+        if(is_xchg_register_or_memory_with_register(opcode)){
+            executed = true;
+            xchg->execute_register_or_memory_with_register(opcode);
+        }
+        else if(is_xchg_register_with_accumulator(opcode)){
+            executed = true;
+            xchg->execute_register_with_accumulator(opcode);
+        }
+    }
 
+}
+void CPU::swap(uint16_t* x, uint16_t* y){
+    uint16_t aux;
+
+    aux = *x; //store the value of x temporaly
+    *x = *y; //move the content of y into x 
+    *y = aux;//store the content of x into y
+}
+void CPU::swap(uint8_t* x, uint8_t* y){
+    uint8_t aux;
+
+    aux = *x; //store the value of x temporaly
+    *x = *y; //move the content of y into x 
+    *y = aux;//store the content of x into y
+}
 void CPU::write_to_ram(uint16_t* address, uint16_t data){
     
     address = (uint16_t*)ADD_TO_ADDR(address);
